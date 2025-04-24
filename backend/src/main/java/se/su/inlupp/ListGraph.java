@@ -17,8 +17,8 @@ private final Map<T, Set<Edge<T>>> connectionMap = new HashMap<>();
     add(node1);
     add(node2);
 
-    Set<Edge> fromNodes = cities.get(node1);
-    Set<Edge> toNodes = cities.get(node2);
+    Set<Edge<T>> fromNodes = connectionMap.get(node1);
+    Set<Edge<T>> toNodes = connectionMap.get(node2);
 
     fromNodes.add(new Edge<T>(node2, weight, name));
     toNodes.add(new Edge<T>(node1, weight, name));
@@ -26,34 +26,68 @@ private final Map<T, Set<Edge<T>>> connectionMap = new HashMap<>();
 
   @Override
   public void setConnectionWeight(T node1, T node2, int weight) {
-    throw new UnsupportedOperationException("Unimplemented method 'setConnectionWeight'");
+    if (weight < 0) throw new IllegalArgumentException();
+    if (!nodeExists(node1) || !nodeExists(node2)) throw new NoSuchElementException();
+
+    for (Edge<T> e : connectionMap.get(node1)) {
+      if (e.getDestination().equals(node2)) {
+        e.setWeight(weight);
+        return;
+      }
+    }
+    throw new NoSuchElementException();
   }
 
   @Override
   public Set<T> getNodes() {
-    throw new UnsupportedOperationException("Unimplemented method 'getNodes'");
+    Set<T> temp = new HashSet<>();
+    temp = connectionMap.keySet();
+    return temp;
+    // throw new UnsupportedOperationException("Unimplemented method 'getNodes'");
   }
 
   @Override
   public Collection<Edge<T>> getEdgesFrom(T node) {
-    throw new UnsupportedOperationException("Unimplemented method 'getEdgesFrom'");
+    if (!nodeExists(node)) throw new NoSuchElementException();
+    return Collections.unmodifiableCollection(connectionMap.get(node));
   }
 
   @Override
   public Edge<T> getEdgeBetween(T node1, T node2) {
-
-
-    throw new UnsupportedOperationException("Unimplemented method 'getEdgeBetween'");
+    for(Edge<T> e : connectionMap.get(node1))
+    {
+      if(e.getDestination().equals(node2))
+      {
+        return e;
+      }
+    }
+    return null;
   }
 
   @Override
   public void disconnect(T node1, T node2) {
-    throw new UnsupportedOperationException("Unimplemented method 'disconnect'");
+    try
+    {
+      if(!connectionMap.containsKey(node1))
+      {
+        throw new NoSuchElementException();
+      }
+      connectionMap.get(node1).remove(getEdgeBetween(node1, node2));
+      connectionMap.get(node2).remove(getEdgeBetween(node2, node1));
+    }
+    catch(IllegalStateException e)
+    {
+      System.out.println("Edge does not exist between selected nodes.");
+    }
   }
 
   @Override
   public void remove(T node) {
-    throw new UnsupportedOperationException("Unimplemented method 'remove'");
+    if (!nodeExists(node)) throw new NoSuchElementException();
+    connectionMap.remove(node);
+    for (T n : connectionMap.keySet()) {
+      connectionMap.get(n).removeIf(e -> e.getDestination().equals(node));
+    }
   }
 
   @Override
@@ -73,4 +107,60 @@ private final Map<T, Set<Edge<T>>> connectionMap = new HashMap<>();
 
     throw new UnsupportedOperationException("Unimplemented method 'getPath'");
   }
+
+  // HELP METHODS
+
+  private boolean nodeExists(T node) {
+    return connectionMap.containsKey(node);
+  }
+
+  private void recursiveVisitAllDepthFirst(T from, T to, Set<T> visited) {
+    visited.add(from);
+    for (Edge<T> e: connectionMap.get(from)) {
+      T currentNode = e.getDestination();
+      if (currentNode.equals(to)) {
+        visited.add(currentNode);
+        return;
+      }
+      if (!visited.contains(currentNode)) {
+        recursiveVisitAllDepthFirst(currentNode, to, visited);
+      }
+    }
+  }
+
+  private boolean depthFirstSearch(T from, T to, Set<T> visited, List<Edge<T>> path) {
+    visited.add(from);
+    if (from.equals(to)) {
+      return true;
+    }
+    for (Edge<T> e : connectionMap.get(from)) {
+      if (!visited.contains(e.getDestination())) {
+        path.add(e);
+        if (depthFirstSearch(e.getDestination(), to, visited, path)) return true;
+        path.remove(path.size()-1);
+      }
+    }
+    return false;
+  }
+
+  private void visitAllWidthFirst(T from, T to, LinkedList<T> queue, Map<T, T> connections) {
+    queue.add(from);
+    connections.put(from, null);
+
+    while (!queue.isEmpty()) {
+      T currentNode = queue.pop();
+      for (Edge<T> e : connectionMap.get(currentNode)) {
+        T nextNode = e.getDestination();
+        if (!connections.containsKey(nextNode)) {
+          connections.put(nextNode, currentNode);
+          queue.add(nextNode);
+          if (nextNode.equals(to)) {
+            queue.clear();
+            break;
+          }
+        }
+      }
+    }
+  }
+
 }
