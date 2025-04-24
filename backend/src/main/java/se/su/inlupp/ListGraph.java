@@ -1,13 +1,10 @@
 package se.su.inlupp;
 
-import java.util.Collection;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 public class ListGraph<T> implements Graph<T> {
+  private Map<T, Set<Edge<T>>> bytnamn = new HashMap<>();
 
-  //hello world
-  //
 
   @Override
   public void add(T node) {
