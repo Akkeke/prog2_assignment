@@ -1,21 +1,30 @@
 package se.su.inlupp;
 
-import java.util.Collection;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 public class ListGraph<T> implements Graph<T> {
+
+private Map<T, Set<Edge>> cities = new HashMap<>();
 
   //hello world
   //
 
   @Override
   public void add(T node) {
+    cities.putIfAbsent(node, new HashSet<>());
     throw new UnsupportedOperationException("Unimplemented method 'add'");
   }
 
   @Override
   public void connect(T node1, T node2, String name, int weight) {
+    add(node1);
+    add(node2);
+
+    Set<Edge> fromNodes = cities.get(node1);
+    Set<Edge> toNodes = cities.get(node2);
+
+    fromNodes.add(new Edge(node2, name, weight));
+    toNodes.add(new Edge(node1, name, weight));
     throw new UnsupportedOperationException("Unimplemented method 'connect'");
   }
 
@@ -36,6 +45,8 @@ public class ListGraph<T> implements Graph<T> {
 
   @Override
   public Edge<T> getEdgeBetween(T node1, T node2) {
+
+
     throw new UnsupportedOperationException("Unimplemented method 'getEdgeBetween'");
   }
 
