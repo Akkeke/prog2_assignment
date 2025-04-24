@@ -12,19 +12,24 @@ public class Edge<T> {
     this.name = name;
   }
 
-  int getWeight() {
+  public int getWeight() {
     return weight;
   }
 
-  void setWeight(int weight) {
+  public void setWeight(int weight) {
     this.weight = weight;
   }
 
-  T getDestination() {
+  public T getDestination() {
     return destination;
   }
 
-  String getName() {
+  public String getName() {
     return name;
+  }
+
+  @Override
+  public String toString() {
+    return String.format("Edge: [Destination: %s; Weight: %d; Name: %s;]", getDestination(), getWeight(), getName());
   }
 }
