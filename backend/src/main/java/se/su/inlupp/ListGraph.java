@@ -4,15 +4,12 @@ import java.util.*;
 
 public class ListGraph<T> implements Graph<T> {
 
-private Map<T, Set<Edge>> cities = new HashMap<>();
+private final Map<T, Set<Edge<T>>> connectionMap = new HashMap<>();
 
-  //hello world
-  //
 
   @Override
   public void add(T node) {
-    cities.putIfAbsent(node, new HashSet<>());
-    throw new UnsupportedOperationException("Unimplemented method 'add'");
+    connectionMap.putIfAbsent(node, new HashSet<>());
   }
 
   @Override
@@ -23,9 +20,8 @@ private Map<T, Set<Edge>> cities = new HashMap<>();
     Set<Edge> fromNodes = cities.get(node1);
     Set<Edge> toNodes = cities.get(node2);
 
-    fromNodes.add(new Edge(node2, name, weight));
-    toNodes.add(new Edge(node1, name, weight));
-    throw new UnsupportedOperationException("Unimplemented method 'connect'");
+    fromNodes.add(new Edge<T>(node2, weight, name));
+    toNodes.add(new Edge<T>(node1, weight, name));
   }
 
   @Override
@@ -62,11 +58,19 @@ private Map<T, Set<Edge>> cities = new HashMap<>();
 
   @Override
   public boolean pathExists(T from, T to) {
-    throw new UnsupportedOperationException("Unimplemented method 'pathExists'");
+    if (!nodeExists(from) || !nodeExists(to)) return false;
+    Set<T> visited = new HashSet<>();
+    recursiveVisitAllDepthFirst(from, to, visited);
+    return visited.contains(to);
   }
 
   @Override
   public List<Edge<T>> getPath(T from, T to) {
+    if(!pathExists(from, to)) return null;
+    List<Edge<T>> path = new ArrayList<>();
+    Set<T> visited = new HashSet<>();
+    if(depthFirstSearch(from, to, visited, path)) return path;
+
     throw new UnsupportedOperationException("Unimplemented method 'getPath'");
   }
 }
