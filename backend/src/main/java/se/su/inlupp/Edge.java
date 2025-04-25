@@ -2,11 +2,12 @@ package se.su.inlupp;
 
 public class Edge<T> {
 
-  private T destination;
+  private final T destination;
+  private final String name;
   private int weight;
-  private String name;
 
   public Edge(T destination, int weight, String name) {
+    if (weight < 0) throw new IllegalArgumentException();
     this.destination = destination;
     this.weight = weight;
     this.name = name;
@@ -17,6 +18,7 @@ public class Edge<T> {
   }
 
   public void setWeight(int weight) {
+    if (weight < 0) throw new IllegalArgumentException();
     this.weight = weight;
   }
 
@@ -30,6 +32,6 @@ public class Edge<T> {
 
   @Override
   public String toString() {
-    return String.format("Edge: [Destination: %s; Weight: %d; Name: %s;]", getDestination(), getWeight(), getName());
+    return String.format("till %s med %s tar %d", getDestination(), getName(), getWeight());
   }
 }

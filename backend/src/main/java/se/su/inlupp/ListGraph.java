@@ -1,5 +1,6 @@
 package se.su.inlupp;
 
+import javax.swing.text.html.HTMLDocument;
 import java.util.*;
 
 public class ListGraph<T> implements Graph<T> {
@@ -14,28 +15,29 @@ private final Map<T, Set<Edge<T>>> connectionMap = new HashMap<>();
 
   @Override
   public void connect(T node1, T node2, String name, int weight) {
-    add(node1);
-    add(node2);
+    if (!nodeExists(node1) || !nodeExists(node2)) throw new NoSuchElementException();
+    if (weight < 0) throw new IllegalArgumentException();
+    for (Edge<T> e : connectionMap.get(node1)) {
+      if (e.getDestination().equals(node2)) throw new IllegalStateException();
+    }
 
-    Set<Edge<T>> fromNodes = connectionMap.get(node1);
-    Set<Edge<T>> toNodes = connectionMap.get(node2);
-
-    fromNodes.add(new Edge<T>(node2, weight, name));
-    toNodes.add(new Edge<T>(node1, weight, name));
+    connectionMap.get(node1).add(new Edge<T>(node2, weight, name));
+    connectionMap.get(node2).add(new Edge<T>(node1, weight, name));
   }
 
   @Override
   public void setConnectionWeight(T node1, T node2, int weight) {
     if (weight < 0) throw new IllegalArgumentException();
     if (!nodeExists(node1) || !nodeExists(node2)) throw new NoSuchElementException();
+    Edge<T> edge1 = getEdgeBetween(node1, node2);
+    Edge<T> edge2 = getEdgeBetween(node2, node1);
 
-    for (Edge<T> e : connectionMap.get(node1)) {
-      if (e.getDestination().equals(node2)) {
-        e.setWeight(weight);
-        return;
-      }
+    if (edge1 != null && edge2 != null) {
+      edge1.setWeight(weight);
+      edge2.setWeight(weight);
+    } else {
+      throw new NoSuchElementException();
     }
-    throw new NoSuchElementException();
   }
 
   @Override
@@ -54,10 +56,9 @@ private final Map<T, Set<Edge<T>>> connectionMap = new HashMap<>();
 
   @Override
   public Edge<T> getEdgeBetween(T node1, T node2) {
-    for(Edge<T> e : connectionMap.get(node1))
-    {
-      if(e.getDestination().equals(node2))
-      {
+    if (!nodeExists(node1) || !nodeExists(node2)) throw new NoSuchElementException();
+    for(Edge<T> e : connectionMap.get(node1)) {
+      if(e.getDestination().equals(node2)) {
         return e;
       }
     }
@@ -66,19 +67,16 @@ private final Map<T, Set<Edge<T>>> connectionMap = new HashMap<>();
 
   @Override
   public void disconnect(T node1, T node2) {
-    try
-    {
-      if(!connectionMap.containsKey(node1))
-      {
-        throw new NoSuchElementException();
-      }
-      connectionMap.get(node1).remove(getEdgeBetween(node1, node2));
-      connectionMap.get(node2).remove(getEdgeBetween(node2, node1));
+    if (!nodeExists(node1) || !nodeExists(node2)) throw new NoSuchElementException();
+    Edge<T> edge1 = getEdgeBetween(node1, node2);
+    Edge<T> edge2 = getEdgeBetween(node2, node1);
+    if (edge1 != null && edge2 != null) {
+      connectionMap.get(node1).remove(edge1);
+      connectionMap.get(node2).remove(edge2);
+    } else {
+      throw new IllegalStateException();
     }
-    catch(IllegalStateException e)
-    {
-      System.out.println("Edge does not exist between selected nodes.");
-    }
+
   }
 
   @Override
@@ -106,6 +104,15 @@ private final Map<T, Set<Edge<T>>> connectionMap = new HashMap<>();
     if(depthFirstSearch(from, to, visited, path)) return path;
 
     throw new UnsupportedOperationException("Unimplemented method 'getPath'");
+  }
+
+  @Override
+  public String toString() {
+    StringBuilder sb = new StringBuilder();
+    for (Map.Entry<T, Set<Edge<T>>> kv : connectionMap.entrySet()) {
+      sb.append(kv.getKey()).append(": ").append(kv.getValue()).append("\n");
+    }
+    return sb.toString();
   }
 
   // HELP METHODS
