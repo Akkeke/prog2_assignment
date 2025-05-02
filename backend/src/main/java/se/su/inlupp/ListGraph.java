@@ -42,10 +42,7 @@ private final Map<T, Set<Edge<T>>> connectionMap = new HashMap<>();
 
   @Override
   public Set<T> getNodes() {
-    Set<T> temp = new HashSet<>();
-    temp = connectionMap.keySet();
-    return temp;
-    // throw new UnsupportedOperationException("Unimplemented method 'getNodes'");
+    return Collections.unmodifiableSet(connectionMap.keySet());
   }
 
   @Override
