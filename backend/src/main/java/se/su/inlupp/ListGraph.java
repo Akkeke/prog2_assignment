@@ -1,6 +1,5 @@
 package se.su.inlupp;
 
-import javax.swing.text.html.HTMLDocument;
 import java.util.*;
 
 public class ListGraph<T> implements Graph<T> {
