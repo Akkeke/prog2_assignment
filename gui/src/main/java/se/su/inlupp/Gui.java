@@ -14,16 +14,25 @@ import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
+import javafx.scene.text.Font;
+import javafx.scene.text.FontWeight;
+import javafx.scene.text.Text;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 
 import java.io.File;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
 public class Gui extends Application {
   private static final Color BACKGROUND_COLOR = Color.rgb(60, 60, 70);
+  private static final Color PLACE_COLOR_PENDING = Color.rgb(230, 194, 16);
+  private static final Color PLACE_COLOR_STANDARD = Color.rgb(42, 224, 36);
+  private static final Color PLACE_COLOR_SELECTED = Color.rgb(36, 180, 224);
 
-  private Graph<String> graph;
+  private final Graph<String> graph = new ListGraph<>();
+  private final Map<Circle, String> placeMap = new HashMap<>();
 
   private Stage stage;
   private FileChooser fileChooser;
@@ -36,6 +45,9 @@ public class Gui extends Application {
   private Button newPlace;
   private Button newConnection;
   private Button changeConnection;
+
+  private Circle selectedPlace1;
+  private Circle selectedPlace2;
 
   public void start(Stage stage) {
     this.stage = stage;
@@ -52,6 +64,7 @@ public class Gui extends Application {
     root.setCenter(center);
     root.setTop(topPane);
 
+    topPane.setSpacing(20);
     buttonPane.setPadding(new Insets(10));
     buttonPane.setSpacing(20);
     buttonPane.setAlignment(Pos.CENTER);
@@ -77,6 +90,7 @@ public class Gui extends Application {
     setButtonsDisable(true);
 
     newPlace.setOnAction(new NewPlaceHandler());
+    newConnection.setOnAction(new NewConnectionHandler());
 
     Scene scene = new Scene(root, 700, 900);
     stage.setScene(scene);
@@ -89,6 +103,10 @@ public class Gui extends Application {
       File file = fileChooser.showOpenDialog(stage);
       if (file != null) {
         Image image = new Image(file.toURI().toString());
+        if (image.isError()) {
+          alertError("Unable to load image file!");
+          return;
+        }
         imageView.setImage(image);
         center.setMinSize(image.getWidth(), image.getHeight());
         center.setMaxSize(image.getWidth(), image.getHeight());
@@ -109,19 +127,28 @@ public class Gui extends Application {
   class NewPlaceClickHandler implements EventHandler<MouseEvent> {
     @Override
     public void handle(MouseEvent event) {
-      TextInputDialog nameInput = new TextInputDialog("");
+      TextInputDialog nameInput = new TextInputDialog();
       nameInput.setTitle("Name");
-      nameInput.setHeaderText("Enter name of the place:");
+      nameInput.setHeaderText("");
+      nameInput.setContentText("Name of place:");
 
-      Circle dot = new Circle(8, Color.GREEN);
+      Circle dot = new Circle(8, PLACE_COLOR_PENDING);
       dot.relocate(event.getX() - dot.getRadius(), event.getY() - dot.getRadius());
       center.getChildren().add(dot);
 
       Optional<String> name = nameInput.showAndWait();
-      if (name.isEmpty() | name.get().isBlank()) {
+      if (name.isEmpty() || name.get().isBlank()) {
         center.getChildren().remove(dot);
       } else {
-        dot.setFill(Color.RED);
+        dot.setFill(PLACE_COLOR_STANDARD);
+        Text nameTag = new Text(name.get());
+        nameTag.setFont(Font.font("System", FontWeight.EXTRA_BOLD, 14));
+        nameTag.relocate(event.getX() - 8, event.getY() + 5);
+        center.getChildren().add(nameTag);
+
+        dot.setOnMouseClicked(new SelectPlaceHandler());
+        placeMap.put(dot, name.get());
+        graph.add(name.get());
       }
       center.setOnMouseClicked(null);
       center.setCursor(null);
@@ -129,10 +156,63 @@ public class Gui extends Application {
     }
   }
 
+  class SelectPlaceHandler implements EventHandler<MouseEvent> {
+    @Override
+    public void handle(MouseEvent event) {
+      if (event.getSource() instanceof Circle place) {
+        if (place.equals(selectedPlace1)) {
+          if (selectedPlace2 != null) {
+            selectedPlace1 = selectedPlace2;
+            selectedPlace2 = null;
+          } else {
+            selectedPlace1 = null;
+          }
+          place.setFill(PLACE_COLOR_STANDARD);
+        } else if (place.equals(selectedPlace2)) {
+          selectedPlace2 = null;
+          place.setFill(PLACE_COLOR_STANDARD);
+        } else if (selectedPlace1 == null) {
+          selectedPlace1 = place;
+          place.setFill(PLACE_COLOR_SELECTED);
+        } else if (selectedPlace2 == null) {
+          selectedPlace2 = place;
+          place.setFill(PLACE_COLOR_SELECTED);
+        }
+      }
+    }
+  }
+
+  class NewConnectionHandler implements EventHandler<ActionEvent> {
+    @Override
+    public void handle(ActionEvent event) {
+      if (selectedPlace1 != null && selectedPlace2 != null) {
+        String place1 = placeMap.get(selectedPlace1);
+        String place2 = placeMap.get(selectedPlace2);
+        if (graph.pathExists(place1, place2)) {
+          alertError("Connection already exists!");
+        } else {
+          TextInputDialog connectionInput = new TextInputDialog();
+          connectionInput.setTitle("Connection");
+          connectionInput.setHeaderText(String.format("Connection from %s to %s", place1, place2));
+          connectionInput.setContentText("Name: ");
+          connectionInput.setContentText("Time: ");
+          connectionInput.showAndWait();
+        }
+      } else {
+        alertError("Two places must be selected!");
+      }
+    }
+  }
+
   private void setButtonsDisable(boolean value) {
     buttonPane.getChildren().forEach(btn -> btn.setDisable(value));
   }
 
+  private void alertError(String text) {
+    Alert alert = new Alert(Alert.AlertType.ERROR, text);
+    alert.setHeaderText("");
+    alert.showAndWait();
+  }
 
   public static void main(String[] args) {
     launch(args);
