@@ -19,6 +19,7 @@ import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
+import javafx.util.Pair;
 
 import java.io.File;
 import java.util.HashMap;
@@ -95,6 +96,8 @@ public class Gui extends Application {
     Scene scene = new Scene(root, 700, 900);
     stage.setScene(scene);
     stage.show();
+
+    showNewConnectionDialog("Paris", "Madrid");
   }
 
   class NewMapHandler implements EventHandler<ActionEvent> {
@@ -191,12 +194,7 @@ public class Gui extends Application {
         if (graph.pathExists(place1, place2)) {
           alertError("Connection already exists!");
         } else {
-          TextInputDialog connectionInput = new TextInputDialog();
-          connectionInput.setTitle("Connection");
-          connectionInput.setHeaderText(String.format("Connection from %s to %s", place1, place2));
-          connectionInput.setContentText("Name: ");
-          connectionInput.setContentText("Time: ");
-          connectionInput.showAndWait();
+          showNewConnectionDialog(place1, place2);
         }
       } else {
         alertError("Two places must be selected!");
@@ -212,6 +210,27 @@ public class Gui extends Application {
     Alert alert = new Alert(Alert.AlertType.ERROR, text);
     alert.setHeaderText("");
     alert.showAndWait();
+  }
+
+  private void showNewConnectionDialog(String place1, String place2) {
+    Dialog<Pair<String, String>> dialog = new Dialog<>();
+    dialog.setTitle("Connection");
+    dialog.setHeaderText(String.format("Connection from %s to %s", place1, place2));
+
+    VBox vBox = new VBox();
+    dialog.getDialogPane().setContent(vBox);
+    TextField nameInput = new TextField();
+    nameInput.setPromptText("Name:");
+    TextField timeInput = new TextField();
+    timeInput.setPromptText("Time:");
+    vBox.getChildren().addAll(nameInput, timeInput);
+    dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+    vBox.requestFocus();
+
+    Optional<Pair<String, String>> result = dialog.showAndWait();
+    if (result.isPresent()) {
+
+    }
   }
 
   public static void main(String[] args) {
