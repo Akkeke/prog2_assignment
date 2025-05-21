@@ -14,6 +14,8 @@ import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
+import javafx.scene.shape.Line;
+import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
@@ -97,7 +99,6 @@ public class Gui extends Application {
     stage.setScene(scene);
     stage.show();
 
-    showNewConnectionDialog("Paris", "Madrid");
   }
 
   class NewMapHandler implements EventHandler<ActionEvent> {
@@ -150,6 +151,7 @@ public class Gui extends Application {
         center.getChildren().add(nameTag);
 
         dot.setOnMouseClicked(new SelectPlaceHandler());
+        dot.setCursor(Cursor.HAND);
         placeMap.put(dot, name.get());
         graph.add(name.get());
       }
@@ -194,7 +196,16 @@ public class Gui extends Application {
         if (graph.pathExists(place1, place2)) {
           alertError("Connection already exists!");
         } else {
-          showNewConnectionDialog(place1, place2);
+          if (showNewConnectionDialog(place1, place2)) {
+            Line line = new Line();
+            line.setStartX(selectedPlace1.getLayoutX());
+            line.setStartY(selectedPlace1.getLayoutY());
+            line.setEndX(selectedPlace2.getLayoutX());
+            line.setEndY(selectedPlace2.getLayoutY());
+            line.setStrokeWidth(3);
+            line.setMouseTransparent(true);
+            center.getChildren().add(line);
+          }
         }
       } else {
         alertError("Two places must be selected!");
@@ -208,29 +219,45 @@ public class Gui extends Application {
 
   private void alertError(String text) {
     Alert alert = new Alert(Alert.AlertType.ERROR, text);
+    System.err.println(text);
     alert.setHeaderText("");
     alert.showAndWait();
   }
 
-  private void showNewConnectionDialog(String place1, String place2) {
-    Dialog<Pair<String, String>> dialog = new Dialog<>();
+  private boolean showNewConnectionDialog(String place1, String place2) {
+    Dialog<Boolean> dialog = new Dialog<>();
     dialog.setTitle("Connection");
     dialog.setHeaderText(String.format("Connection from %s to %s", place1, place2));
 
     VBox vBox = new VBox();
     dialog.getDialogPane().setContent(vBox);
     TextField nameInput = new TextField();
-    nameInput.setPromptText("Name:");
+    nameInput.setPromptText("Name");
     TextField timeInput = new TextField();
-    timeInput.setPromptText("Time:");
+    timeInput.setPromptText("Time");
     vBox.getChildren().addAll(nameInput, timeInput);
     dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
     vBox.requestFocus();
+    dialog.setResultConverter(btn -> btn == ButtonType.OK ? true: null);
 
-    Optional<Pair<String, String>> result = dialog.showAndWait();
-    if (result.isPresent()) {
-
+    Optional<Boolean> result = dialog.showAndWait();
+    if (result.isPresent() && result.get()) {
+      String name = nameInput.getText();
+      int time = -1;
+      try {
+        time = Integer.parseInt(timeInput.getText());
+      } catch (NumberFormatException e) {
+        alertError("Invalid value for time");
+        return false;
+      }
+      if (time > -1 && !name.isBlank()) {
+        graph.connect(place1, place2, name, time);
+        return  true;
+      } else {
+        alertError("Invalid input");
+      }
     }
+    return false;
   }
 
   public static void main(String[] args) {
