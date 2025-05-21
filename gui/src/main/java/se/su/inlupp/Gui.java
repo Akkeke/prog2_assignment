@@ -34,8 +34,8 @@ public class Gui extends Application {
   private static final Color PLACE_COLOR_STANDARD = Color.rgb(42, 224, 36);
   private static final Color PLACE_COLOR_SELECTED = Color.rgb(36, 180, 224);
 
-  private final Graph<String> graph = new ListGraph<>();
-  private final Map<Circle, String> placeMap = new HashMap<>();
+  private Graph<String> graph = new ListGraph<>();
+  private Map<Circle, String> placeMap = new HashMap<>();
 
   private Stage stage;
   private FileChooser fileChooser;
@@ -149,7 +149,6 @@ public class Gui extends Application {
         nameTag.setFont(Font.font("System", FontWeight.EXTRA_BOLD, 14));
         nameTag.relocate(event.getX() - 8, event.getY() + 5);
         center.getChildren().add(nameTag);
-
         dot.setOnMouseClicked(new SelectPlaceHandler());
         dot.setCursor(Cursor.HAND);
         placeMap.put(dot, name.get());
