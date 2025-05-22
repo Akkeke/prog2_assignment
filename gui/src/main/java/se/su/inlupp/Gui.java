@@ -14,11 +14,10 @@ import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
-import javafx.scene.shape.Line;
-import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
+import javafx.stage.DirectoryChooser;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import javafx.util.Pair;
@@ -34,8 +33,8 @@ public class Gui extends Application {
   private static final Color PLACE_COLOR_STANDARD = Color.rgb(42, 224, 36);
   private static final Color PLACE_COLOR_SELECTED = Color.rgb(36, 180, 224);
 
-  private Graph<String> graph = new ListGraph<>();
-  private Map<Circle, String> placeMap = new HashMap<>();
+  private final Graph<String> graph = new ListGraph<>();
+  private final Map<Circle, String> placeMap = new HashMap<>();
 
   private Stage stage;
   private FileChooser fileChooser;
@@ -83,6 +82,10 @@ public class Gui extends Application {
     fileMenu.getItems().addAll(newMapItem, openItem, saveItem, saveImageItem, exitItem);
 
     newMapItem.setOnAction(new NewMapHandler());
+    openItem.setOnAction(new OpenHandler());
+    saveItem.setOnAction(new SaveHandler());
+    saveImageItem.setOnAction(new SaveImageHandler());
+    exitItem.setOnAction(new ExitHandler());
 
     findPath = new Button("Find Path");
     showConnection = new Button("Show Connection");
@@ -99,6 +102,7 @@ public class Gui extends Application {
     stage.setScene(scene);
     stage.show();
 
+    showNewConnectionDialog("Paris", "Madrid");
   }
 
   class NewMapHandler implements EventHandler<ActionEvent> {
@@ -149,8 +153,8 @@ public class Gui extends Application {
         nameTag.setFont(Font.font("System", FontWeight.EXTRA_BOLD, 14));
         nameTag.relocate(event.getX() - 8, event.getY() + 5);
         center.getChildren().add(nameTag);
+
         dot.setOnMouseClicked(new SelectPlaceHandler());
-        dot.setCursor(Cursor.HAND);
         placeMap.put(dot, name.get());
         graph.add(name.get());
       }
@@ -195,16 +199,7 @@ public class Gui extends Application {
         if (graph.pathExists(place1, place2)) {
           alertError("Connection already exists!");
         } else {
-          if (showNewConnectionDialog(place1, place2)) {
-            Line line = new Line();
-            line.setStartX(selectedPlace1.getLayoutX());
-            line.setStartY(selectedPlace1.getLayoutY());
-            line.setEndX(selectedPlace2.getLayoutX());
-            line.setEndY(selectedPlace2.getLayoutY());
-            line.setStrokeWidth(3);
-            line.setMouseTransparent(true);
-            center.getChildren().add(line);
-          }
+          showNewConnectionDialog(place1, place2);
         }
       } else {
         alertError("Two places must be selected!");
@@ -218,45 +213,69 @@ public class Gui extends Application {
 
   private void alertError(String text) {
     Alert alert = new Alert(Alert.AlertType.ERROR, text);
-    System.err.println(text);
     alert.setHeaderText("");
     alert.showAndWait();
   }
 
-  private boolean showNewConnectionDialog(String place1, String place2) {
-    Dialog<Boolean> dialog = new Dialog<>();
+  private void showNewConnectionDialog(String place1, String place2) {
+    Dialog<Pair<String, String>> dialog = new Dialog<>();
     dialog.setTitle("Connection");
     dialog.setHeaderText(String.format("Connection from %s to %s", place1, place2));
 
     VBox vBox = new VBox();
     dialog.getDialogPane().setContent(vBox);
     TextField nameInput = new TextField();
-    nameInput.setPromptText("Name");
+    nameInput.setPromptText("Name:");
     TextField timeInput = new TextField();
-    timeInput.setPromptText("Time");
+    timeInput.setPromptText("Time:");
     vBox.getChildren().addAll(nameInput, timeInput);
     dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
     vBox.requestFocus();
-    dialog.setResultConverter(btn -> btn == ButtonType.OK ? true: null);
 
-    Optional<Boolean> result = dialog.showAndWait();
-    if (result.isPresent() && result.get()) {
-      String name = nameInput.getText();
-      int time = -1;
-      try {
-        time = Integer.parseInt(timeInput.getText());
-      } catch (NumberFormatException e) {
-        alertError("Invalid value for time");
-        return false;
-      }
-      if (time > -1 && !name.isBlank()) {
-        graph.connect(place1, place2, name, time);
-        return  true;
-      } else {
-        alertError("Invalid input");
-      }
+    Optional<Pair<String, String>> result = dialog.showAndWait();
+    if (result.isPresent()) {
+
     }
-    return false;
+  }
+
+  private void save(String fileName)
+  {
+    try
+    {
+      File newFile = new File(fileName + ".graf");
+      if(!newFile.createNewFile())
+      {
+        alertError("File already exists");
+      }
+      write(newFile);
+    }
+    catch (IOException e)
+    {
+      alertError("An error occurred");
+    }
+  }
+
+  private void write(File targetFile)
+  {
+    try (BufferedWriter writer = new BufferedWriter(new FileWriter(targetFile)))
+    {
+      writer.write("file: " + imageView.getImage().getUrl());
+      writer.newLine();
+
+      for (Map.Entry<Circle, String> kv : placeMap.entrySet()) {
+        Circle dot = kv.getKey();
+        writer.write(String.format("%s;%.1f;%.1f;", kv.getValue(), dot.getLayoutX(), dot.getLayoutX()));
+
+    }
+      writer.newLine();
+
+      //for ()
+    }
+
+    catch (IOException e)
+    {
+
+    }
   }
 
   public static void main(String[] args) {
