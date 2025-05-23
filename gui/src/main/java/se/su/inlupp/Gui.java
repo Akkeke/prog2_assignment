@@ -31,7 +31,7 @@ public class Gui extends Application {
   private static final Color PLACE_COLOR_SELECTED = Color.rgb(36, 180, 224);
   private static final double PLACE_SIZE = 8;
   private static final int FONT_SIZE = 14;
-  private static final int STROKE_WIDTH = 3;
+  private static final int LINE_STROKE_WIDTH = 3;
 
   private Graph<String> graph = new ListGraph<>();
   private Map<String, Circle> placeMap = new HashMap<>();
@@ -223,6 +223,7 @@ public class Gui extends Application {
   }
 
   //Knapparnas funktionalitet
+
   class NewPlaceHandler implements EventHandler<ActionEvent> {
     @Override
     public void handle(ActionEvent event) {
@@ -384,7 +385,7 @@ public class Gui extends Application {
     line.setStartY(dot1.getLayoutY());
     line.setEndX(dot2.getLayoutX());
     line.setEndY(dot2.getLayoutY());
-    line.setStrokeWidth(STROKE_WIDTH);
+    line.setStrokeWidth(LINE_STROKE_WIDTH);
     line.setMouseTransparent(true);
     center.getChildren().add(line);
   }
