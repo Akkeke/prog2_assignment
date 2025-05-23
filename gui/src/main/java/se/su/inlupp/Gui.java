@@ -21,19 +21,20 @@ import javafx.scene.text.Text;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 
-import java.io.File;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
+import java.io.*;
+import java.util.*;
 
 public class Gui extends Application {
   private static final Color BACKGROUND_COLOR = Color.rgb(60, 60, 70);
   private static final Color PLACE_COLOR_PENDING = Color.rgb(230, 194, 16);
   private static final Color PLACE_COLOR_STANDARD = Color.rgb(42, 224, 36);
   private static final Color PLACE_COLOR_SELECTED = Color.rgb(36, 180, 224);
+  private static final double PLACE_SIZE = 8;
+  private static final int FONT_SIZE = 14;
+  private static final int STROKE_WIDTH = 3;
 
   private Graph<String> graph = new ListGraph<>();
-  private Map<Circle, String> placeMap = new HashMap<>();
+  private Map<String, Circle> placeMap = new HashMap<>();
 
   private Stage stage;
   private FileChooser fileChooser;
@@ -65,7 +66,7 @@ public class Gui extends Application {
     root.setCenter(center);
     root.setTop(topPane);
 
-    topPane.setSpacing(20);
+    topPane.setSpacing(10);
     buttonPane.setPadding(new Insets(10));
     buttonPane.setSpacing(20);
     buttonPane.setAlignment(Pos.CENTER);
@@ -81,6 +82,10 @@ public class Gui extends Application {
     fileMenu.getItems().addAll(newMapItem, openItem, saveItem, saveImageItem, exitItem);
 
     newMapItem.setOnAction(new NewMapHandler());
+    openItem.setOnAction(new OpenHandler());
+    saveItem.setOnAction(new SaveHandler());
+    saveImageItem.setOnAction(new SaveImageHandler());
+    exitItem.setOnAction(new ExitHandler());
 
     findPath = new Button("Find Path");
     showConnection = new Button("Show Connection");
@@ -93,11 +98,13 @@ public class Gui extends Application {
     newPlace.setOnAction(new NewPlaceHandler());
     newConnection.setOnAction(new NewConnectionHandler());
 
-    Scene scene = new Scene(root, 700, 900);
+    Scene scene = new Scene(root, 650, 820);
     stage.setScene(scene);
     stage.show();
 
   }
+
+  //Menyns funktionalitet
 
   class NewMapHandler implements EventHandler<ActionEvent> {
     @Override
@@ -105,18 +112,117 @@ public class Gui extends Application {
       File file = fileChooser.showOpenDialog(stage);
       if (file != null) {
         Image image = new Image(file.toURI().toString());
-        if (image.isError()) {
+        if (!image.isError()) {
+          setImageView(image);
+          setButtonsDisable(false);
+        } else {
           alertError("Unable to load image file!");
-          return;
         }
-        imageView.setImage(image);
-        center.setMinSize(image.getWidth(), image.getHeight());
-        center.setMaxSize(image.getWidth(), image.getHeight());
-        setButtonsDisable(false);
       }
     }
   }
 
+  class OpenHandler implements EventHandler<ActionEvent> {
+    @Override
+    public void handle(ActionEvent event) {
+      File file = fileChooser.showOpenDialog(stage);
+      if (file != null && file.getName().endsWith(".graf")) {
+        open(file);
+        setButtonsDisable(false);
+        selectedPlace1 = null;
+        selectedPlace2 = null;
+      }
+    }
+  }
+
+  class SaveHandler implements EventHandler<ActionEvent> {
+    @Override
+    public void handle(ActionEvent event) {
+      File file = fileChooser.showSaveDialog(stage);
+      if (file != null) {
+        if (!file.getName().endsWith(".graf")) {
+          file = new File(file.getAbsolutePath() + ".graf");
+        }
+        save(file);
+      }
+    }
+  }
+
+  class SaveImageHandler implements EventHandler<ActionEvent> {
+    @Override
+    public void handle(ActionEvent event) {
+
+    }
+  }
+
+  class ExitHandler implements EventHandler<ActionEvent> {
+    @Override
+    public void handle(ActionEvent event) {
+
+    }
+  }
+
+  private void save(File file) {
+    try (BufferedWriter writer = new BufferedWriter(new FileWriter(file))) {
+      writer.write(imageView.getImage().getUrl());
+      writer.newLine();
+      StringJoiner sj = new StringJoiner(";");
+
+      for (Map.Entry<String, Circle> kv : placeMap.entrySet()) {
+        Circle circle = kv.getValue();
+        sj.add(String.format(Locale.US, "%s;%.1f;%.1f", kv.getKey(), circle.getLayoutX(), circle.getLayoutY()));
+      }
+      writer.write(sj.toString());
+      writer.newLine();
+
+      for (String node : graph.getNodes()) {
+        for (Edge<String> edge : graph.getEdgesFrom(node)) {
+          writer.write(String.format("%s;%s;%s;%d", node, edge.getDestination(), edge.getName(), edge.getWeight()));
+          writer.newLine();
+        }
+      }
+    } catch (IOException e) {
+      alertError("An error occurred while saving file");
+    }
+  }
+
+  private void open(File file) {
+    try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
+      graph = new ListGraph<>();
+      placeMap = new HashMap<>();
+      String imagePath = reader.readLine();
+      Image image = new Image(imagePath);
+      if (!image.isError()) {
+        setImageView(image);
+        String[] info = reader.readLine().split(";");
+        for (int i = 0; i < info.length; i += 3) {
+          String place = info[i];
+          double x = Double.parseDouble(info[i + 1]);
+          double y = Double.parseDouble(info[i + 2]);
+          addAndDrawPlace(place, x, y);
+        }
+
+        String line = reader.readLine();
+        while (line != null) {
+          info = line.split(";");
+          int weight = Integer.parseInt(info[3]);
+          addAndDrawConnection(info[0], info[1], info[2], weight);
+          line = reader.readLine();
+          System.out.println(line);
+        }
+      }
+    } catch (IOException e) {
+      alertError("An error occurred while opening file");
+    }
+  }
+
+  private void setImageView(Image image) {
+    imageView.setImage(image);
+    center.setMinSize(image.getWidth(), image.getHeight());
+    center.setMaxSize(image.getWidth(), image.getHeight());
+  }
+
+  //Knapparnas funktionalitet
   class NewPlaceHandler implements EventHandler<ActionEvent> {
     @Override
     public void handle(ActionEvent event) {
@@ -134,24 +240,17 @@ public class Gui extends Application {
       nameInput.setHeaderText("");
       nameInput.setContentText("Name of place:");
 
-      Circle dot = new Circle(8, PLACE_COLOR_PENDING);
+      Circle dot = new Circle(PLACE_SIZE, PLACE_COLOR_PENDING);
       dot.relocate(event.getX() - dot.getRadius(), event.getY() - dot.getRadius());
       center.getChildren().add(dot);
 
       Optional<String> name = nameInput.showAndWait();
-      if (name.isEmpty() || name.get().isBlank()) {
-        center.getChildren().remove(dot);
-      } else {
-        dot.setFill(PLACE_COLOR_STANDARD);
-        Text nameTag = new Text(name.get());
-        nameTag.setFont(Font.font("System", FontWeight.EXTRA_BOLD, 14));
-        nameTag.relocate(event.getX() - 8, event.getY() + 5);
-        center.getChildren().add(nameTag);
-        dot.setOnMouseClicked(new SelectPlaceHandler());
-        dot.setCursor(Cursor.HAND);
-        placeMap.put(dot, name.get());
-        graph.add(name.get());
+      center.getChildren().remove(dot);
+
+      if (name.isPresent() && !name.get().isBlank()) {
+        addAndDrawPlace(name.get(), event.getX(), event.getY());
       }
+
       center.setOnMouseClicked(null);
       center.setCursor(null);
       newPlace.setDisable(false);
@@ -188,8 +287,14 @@ public class Gui extends Application {
     @Override
     public void handle(ActionEvent event) {
       if (selectedPlace1 != null && selectedPlace2 != null) {
-        String place1 = placeMap.get(selectedPlace1);
-        String place2 = placeMap.get(selectedPlace2);
+        String place1 = "";
+        String place2 = "";
+        for (String s : placeMap.keySet()) {
+          Circle circle = placeMap.get(s);
+          if (circle == selectedPlace1) place1 = s;
+          if (circle == selectedPlace2) place2 = s;
+          if (!place1.isBlank() && !place2.isBlank()) break;
+        }
         if (graph.pathExists(place1, place2)) {
           alertError("Connection already exists!");
         } else {
@@ -208,6 +313,19 @@ public class Gui extends Application {
         alertError("Two places must be selected!");
       }
     }
+  }
+
+  private void addAndDrawPlace(String name, double x, double y) {
+    Circle place = new Circle(PLACE_SIZE, PLACE_COLOR_STANDARD);
+    place.relocate(x - place.getRadius(), y - place.getRadius());
+    place.setCursor(Cursor.HAND);
+    place.setOnMouseClicked(new SelectPlaceHandler());
+    Text nameTag = new Text(name);
+    nameTag.setFont(Font.font("System", FontWeight.EXTRA_BOLD, FONT_SIZE));
+    nameTag.relocate(x - 8, y + 5);
+    center.getChildren().addAll(place, nameTag);
+    placeMap.put(name, place);
+    graph.add(name);
   }
 
   private void setButtonsDisable(boolean value) {
@@ -255,6 +373,20 @@ public class Gui extends Application {
       }
     }
     return false;
+  }
+
+  private void addAndDrawConnection(String place1, String place2, String name, int weight) {
+    if (!graph.pathExists(place1, place2)) graph.connect(place1, place2, name, weight);
+    Circle dot1 = placeMap.get(place1);
+    Circle dot2 = placeMap.get(place2);
+    Line line = new Line();
+    line.setStartX(dot1.getLayoutX());
+    line.setStartY(dot1.getLayoutY());
+    line.setEndX(dot2.getLayoutX());
+    line.setEndY(dot2.getLayoutY());
+    line.setStrokeWidth(STROKE_WIDTH);
+    line.setMouseTransparent(true);
+    center.getChildren().add(line);
   }
 
   public static void main(String[] args) {
