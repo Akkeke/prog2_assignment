@@ -94,12 +94,7 @@ private final Map<T, Set<Edge<T>>> connectionMap = new HashMap<>();
 
   @Override
   public List<Edge<T>> getPath(T from, T to) {
-    if(!pathExists(from, to)) return null;
-    List<Edge<T>> path = new ArrayList<>();
-    Set<T> visited = new HashSet<>();
-    if(depthFirstSearch(from, to, visited, path)) return path;
-
-    throw new UnsupportedOperationException("Unimplemented method 'getPath'");
+    return getShortestWeightedPath(from, to);
   }
 
   @Override
@@ -149,7 +144,6 @@ private final Map<T, Set<Edge<T>>> connectionMap = new HashMap<>();
   private void visitAllWidthFirst(T from, T to, LinkedList<T> queue, Map<T, T> connections) {
     queue.add(from);
     connections.put(from, null);
-
     while (!queue.isEmpty()) {
       T currentNode = queue.pop();
       for (Edge<T> e : connectionMap.get(currentNode)) {
@@ -166,4 +160,47 @@ private final Map<T, Set<Edge<T>>> connectionMap = new HashMap<>();
     }
   }
 
+  public List<Edge<T>> getShortestWeightedPath(T from, T to) {
+    Map<T, T> prev = new HashMap<>();
+    Map<T, Integer> dist = new HashMap<>();
+    PriorityQueue<T> queue = new PriorityQueue<>(Comparator.comparingInt(dist::get));
+
+    for (T node : connectionMap.keySet()) {
+      dist.put(node, Integer.MAX_VALUE);
+      prev.put(node, null);
+    }
+    dist.put(from, 0);
+    queue.add(from);
+
+    while (!queue.isEmpty()) {
+      T node = queue.poll();
+      if (node.equals(to)) break;
+      for (Edge<T> edge : connectionMap.getOrDefault(node, Collections.<Edge<T>>emptySet())) {
+        T neighbor = edge.getDestination();
+        int alt = dist.get(node) + edge.getWeight();
+
+        if (alt < dist.get(neighbor)) {
+          dist.put(neighbor, alt);
+          prev.put(neighbor, node);
+          queue.remove(neighbor);
+          queue.add(neighbor);
+        }
+      }
+    }
+    if (prev.get(to) == null && !from.equals(to)) return null;
+
+    LinkedList<Edge<T>> path = new LinkedList<>();
+    T node = to;
+    if (prev.get(node) != null || node.equals(to)) {
+      while (node != null) {
+        T next = prev.get(node);
+        if (next != null) {
+          Edge<T> e = getEdgeBetween(next, node);
+          path.add(e);
+        }
+        node = next;
+      }
+    }
+    return path.reversed();
+  }
 }

@@ -21,6 +21,7 @@ import javafx.scene.text.Text;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 
+import javax.swing.*;
 import java.io.*;
 import java.util.*;
 
@@ -35,6 +36,7 @@ public class Gui extends Application {
 
   private Graph<String> graph = new ListGraph<>();
   private Map<String, Circle> placeMap = new HashMap<>();
+  private Map<Circle, String> circleToPlace = new HashMap<>();
 
   private Stage stage;
   private FileChooser fileChooser;
@@ -46,11 +48,10 @@ public class Gui extends Application {
   private TextField nameInput;
   private TextField timeInput;
 
-  private Button findPath;
-  private Button showConnection;
+  private Dialog<ButtonType> pathDialog;
+  private TextArea pathText;
+
   private Button newPlace;
-  private Button newConnection;
-  private Button changeConnection;
 
   private Circle selectedPlace1;
   private Circle selectedPlace2;
@@ -68,7 +69,6 @@ public class Gui extends Application {
     VBox topPane = new VBox();
     MenuBar menuBar = new MenuBar();
     topPane.getChildren().addAll(menuBar, buttonPane);
-    center.getChildren().add(imageView);
     root.setCenter(center);
     root.setTop(topPane);
 
@@ -93,16 +93,19 @@ public class Gui extends Application {
     saveImageItem.setOnAction(new SaveImageHandler());
     exitItem.setOnAction(new ExitHandler());
 
-    findPath = new Button("Find Path");
-    showConnection = new Button("Show Connection");
     newPlace = new Button("New Place");
-    newConnection = new Button("New Connection");
-    changeConnection = new Button("Change Connection");
+    Button findPath = new Button("Find Path");
+    Button showConnection = new Button("Show Connection");
+    Button newConnection = new Button("New Connection");
+    Button changeConnection = new Button("Change Connection");
     buttonPane.getChildren().addAll(findPath, showConnection, newPlace, newConnection, changeConnection);
     setButtonsDisable(true);
 
     newPlace.setOnAction(new NewPlaceHandler());
     newConnection.setOnAction(new NewConnectionHandler());
+    showConnection.setOnAction(new ShowConnectionHandler());
+    changeConnection.setOnAction(new ChangeConnectionHandler());
+    findPath.setOnAction(new FindPathHandler());
 
     //Connection dialog
     connectionDialog = new Dialog<>();
@@ -117,6 +120,15 @@ public class Gui extends Application {
     vBox.getChildren().addAll(nameLabel, nameInput, timeLabel, timeInput);
     connectionDialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
     connectionDialog.setResultConverter(btn -> btn == ButtonType.OK ? true: null);
+
+    //Path dialog
+    pathDialog = new Dialog<>();
+    pathDialog.setTitle("Path");
+    pathText = new TextArea();
+    pathText.setWrapText(true);
+    pathText.setEditable(false);
+    pathDialog.getDialogPane().getButtonTypes().add(ButtonType.OK);
+    pathDialog.getDialogPane().setContent(pathText);
 
     Scene scene = new Scene(root, 650, 820);
     stage.setScene(scene);
@@ -137,6 +149,7 @@ public class Gui extends Application {
           selectedPlace2 = null;
           graph = new ListGraph<>();
           placeMap = new HashMap<>();
+          circleToPlace = new HashMap<>();
           setButtonsDisable(false);
           isChanged = false;
         } else {
@@ -215,6 +228,7 @@ public class Gui extends Application {
     try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
       graph = new ListGraph<>();
       placeMap = new HashMap<>();
+      circleToPlace = new HashMap<>();
       String imagePath = reader.readLine();
       Image image = new Image(imagePath);
       if (!image.isError()) {
@@ -233,7 +247,6 @@ public class Gui extends Application {
           int weight = Integer.parseInt(info[3]);
           addAndDrawConnection(info[0], info[1], info[2], weight);
           line = reader.readLine();
-          System.out.println(line);
         }
         isChanged = false;
       }
@@ -243,6 +256,8 @@ public class Gui extends Application {
   }
 
   private void setImageView(Image image) {
+    center.getChildren().clear();
+    center.getChildren().add(imageView);
     imageView.setImage(image);
     center.setMinSize(image.getWidth(), image.getHeight());
     center.setMaxSize(image.getWidth(), image.getHeight());
@@ -275,8 +290,14 @@ public class Gui extends Application {
       center.getChildren().remove(dot);
 
       if (name.isPresent() && !name.get().isBlank()) {
-        addAndDrawPlace(name.get(), event.getX(), event.getY());
-        isChanged = true;
+        if (!placeMap.containsKey(name.get())) {
+          addAndDrawPlace(name.get(), event.getX(), event.getY());
+          isChanged = true;
+        } else {
+          alertError("\"" + name.get() + "\"" + " already exists!");
+        }
+      } else {
+        alertError("Name can't be empty!");
       }
 
       center.setOnMouseClicked(null);
@@ -315,15 +336,9 @@ public class Gui extends Application {
     @Override
     public void handle(ActionEvent event) {
       if (selectedPlace1 != null && selectedPlace2 != null) {
-        String place1 = "";
-        String place2 = "";
-        for (String s : placeMap.keySet()) {
-          Circle circle = placeMap.get(s);
-          if (circle == selectedPlace1) place1 = s;
-          if (circle == selectedPlace2) place2 = s;
-          if (!place1.isBlank() && !place2.isBlank()) break;
-        }
-        if (graph.pathExists(place1, place2)) {
+        String place1 = circleToPlace.get(selectedPlace1);
+        String place2 = circleToPlace.get(selectedPlace2);
+        if (graph.getEdgeBetween(place1, place2) != null) {
           alertError("Connection already exists!");
         } else {
           if (newConnection(place1, place2)) {
@@ -344,6 +359,66 @@ public class Gui extends Application {
     }
   }
 
+  class ShowConnectionHandler implements EventHandler<ActionEvent> {
+    @Override
+    public void handle(ActionEvent event) {
+      if (selectedPlace1 != null && selectedPlace2 != null) {
+        String place1 = circleToPlace.get(selectedPlace1);
+        String place2 = circleToPlace.get(selectedPlace2);
+        if (graph.getEdgeBetween(place1, place2) != null) {
+          showConnection(place1, place2);
+        } else {
+          alertError("No connection between places!");
+        }
+      } else {
+        alertError("Two places must be selected!");
+      }
+    }
+  }
+
+  class ChangeConnectionHandler implements EventHandler<ActionEvent> {
+    @Override
+    public void handle(ActionEvent event) {
+      if (selectedPlace1 != null && selectedPlace2 != null) {
+        String place1 = circleToPlace.get(selectedPlace1);
+        String place2 = circleToPlace.get(selectedPlace2);
+        if (graph.getEdgeBetween(place1, place2) != null) {
+          changeConnection(place1, place2);
+        } else {
+          alertError("No connection between places!");
+        }
+      } else {
+        alertError("Two places must be selected!");
+      }
+    }
+  }
+
+  class FindPathHandler implements EventHandler<ActionEvent> {
+    @Override
+    public void handle(ActionEvent event) {
+      if (selectedPlace1 != null && selectedPlace2 != null) {
+        String place1 = circleToPlace.get(selectedPlace1);
+        String place2 = circleToPlace.get(selectedPlace2);
+        List<Edge<String>> path = graph.getPath(place1, place2);
+        if (path != null) {
+          pathDialog.setHeaderText(String.format("The path from %s to %s", place1, place2));
+          pathText.clear();
+          int totalTime = 0;
+          for (Edge<String> e : path) {
+            pathText.appendText(e.toString() + "\n");
+            totalTime += e.getWeight();
+          }
+          pathText.appendText(Integer.toString(totalTime));
+        } else {
+          pathText.setText(String.format("No path found from %s to %s", place1, place2));
+        }
+        pathDialog.show();
+      } else {
+        alertError("Two places must be selected!");
+      }
+    }
+  }
+
   private void addAndDrawPlace(String name, double x, double y) {
     Circle place = new Circle(PLACE_SIZE, PLACE_COLOR_STANDARD);
     place.relocate(x - place.getRadius(), y - place.getRadius());
@@ -354,6 +429,7 @@ public class Gui extends Application {
     nameTag.relocate(x - 8, y + 5);
     center.getChildren().addAll(place, nameTag);
     placeMap.put(name, place);
+    circleToPlace.put(place, name);
     graph.add(name);
   }
 
@@ -372,6 +448,9 @@ public class Gui extends Application {
     connectionDialog.setHeaderText(String.format("New connection from %s to %s.", place1, place2));
     timeInput.clear();
     nameInput.clear();
+    nameInput.setDisable(false);
+    timeInput.setDisable(false);
+    nameInput.requestFocus();
     Optional<Boolean> result = connectionDialog.showAndWait();
     if (result.isPresent() && result.get()) {
       String name = nameInput.getText();
@@ -392,8 +471,42 @@ public class Gui extends Application {
     return false;
   }
 
+  private void showConnection(String place1, String place2) {
+    connectionDialog.setHeaderText(String.format("Connection from %s to %s.", place1, place2));
+    Edge<String> edge = graph.getEdgeBetween(place1, place2);
+    timeInput.setText(Integer.toString(edge.getWeight()));
+    nameInput.setText(edge.getName());
+    nameInput.setDisable(true);
+    timeInput.setDisable(true);
+    connectionDialog.show();
+  }
+
+  private void changeConnection(String place1, String place2) {
+    connectionDialog.setHeaderText(String.format("Change connection from %s to %s.", place1, place2));
+    Edge<String> edge = graph.getEdgeBetween(place1, place2);
+    timeInput.setText(Integer.toString(edge.getWeight()));
+    nameInput.setText(edge.getName());
+    nameInput.setDisable(true);
+    timeInput.setDisable(false);
+
+    Optional<Boolean> result = connectionDialog.showAndWait();
+    if (result.isPresent() && result.get()) {
+      int time = -1;
+      try {
+        time = Integer.parseInt(timeInput.getText());
+        if (time > -1) {
+          edge.setWeight(time);
+          graph.getEdgeBetween(place2, place1).setWeight(time);
+        }
+        else alertError("Time must be positive integer");
+      } catch (NumberFormatException e) {
+        alertError("Invalid value for time");
+      }
+    }
+  }
+
   private void addAndDrawConnection(String place1, String place2, String name, int weight) {
-    if (!graph.pathExists(place1, place2)) graph.connect(place1, place2, name, weight);
+    if (graph.getEdgeBetween(place1, place2) == null) graph.connect(place1, place2, name, weight);
     Circle dot1 = placeMap.get(place1);
     Circle dot2 = placeMap.get(place2);
     Line line = new Line();
