@@ -42,6 +42,10 @@ public class Gui extends Application {
   private Pane center;
   private HBox buttonPane;
 
+  private Dialog<Boolean> connectionDialog;
+  private TextField nameInput;
+  private TextField timeInput;
+
   private Button findPath;
   private Button showConnection;
   private Button newPlace;
@@ -50,6 +54,8 @@ public class Gui extends Application {
 
   private Circle selectedPlace1;
   private Circle selectedPlace2;
+
+  private boolean isChanged = false;
 
   public void start(Stage stage) {
     this.stage = stage;
@@ -98,10 +104,23 @@ public class Gui extends Application {
     newPlace.setOnAction(new NewPlaceHandler());
     newConnection.setOnAction(new NewConnectionHandler());
 
+    //Connection dialog
+    connectionDialog = new Dialog<>();
+    connectionDialog.setTitle("Connection");
+
+    VBox vBox = new VBox();
+    connectionDialog.getDialogPane().setContent(vBox);
+    nameInput = new TextField();
+    Label nameLabel = new Label("Name:");
+    timeInput = new TextField();
+    Label timeLabel = new Label("Time:");
+    vBox.getChildren().addAll(nameLabel, nameInput, timeLabel, timeInput);
+    connectionDialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+    connectionDialog.setResultConverter(btn -> btn == ButtonType.OK ? true: null);
+
     Scene scene = new Scene(root, 650, 820);
     stage.setScene(scene);
     stage.show();
-
   }
 
   //Menyns funktionalitet
@@ -114,7 +133,12 @@ public class Gui extends Application {
         Image image = new Image(file.toURI().toString());
         if (!image.isError()) {
           setImageView(image);
+          selectedPlace1 = null;
+          selectedPlace2 = null;
+          graph = new ListGraph<>();
+          placeMap = new HashMap<>();
           setButtonsDisable(false);
+          isChanged = false;
         } else {
           alertError("Unable to load image file!");
         }
@@ -181,6 +205,7 @@ public class Gui extends Application {
           writer.newLine();
         }
       }
+      isChanged = false;
     } catch (IOException e) {
       alertError("An error occurred while saving file");
     }
@@ -210,6 +235,7 @@ public class Gui extends Application {
           line = reader.readLine();
           System.out.println(line);
         }
+        isChanged = false;
       }
     } catch (IOException e) {
       alertError("An error occurred while opening file");
@@ -250,6 +276,7 @@ public class Gui extends Application {
 
       if (name.isPresent() && !name.get().isBlank()) {
         addAndDrawPlace(name.get(), event.getX(), event.getY());
+        isChanged = true;
       }
 
       center.setOnMouseClicked(null);
@@ -299,7 +326,7 @@ public class Gui extends Application {
         if (graph.pathExists(place1, place2)) {
           alertError("Connection already exists!");
         } else {
-          if (showNewConnectionDialog(place1, place2)) {
+          if (newConnection(place1, place2)) {
             Line line = new Line();
             line.setStartX(selectedPlace1.getLayoutX());
             line.setStartY(selectedPlace1.getLayoutY());
@@ -308,6 +335,7 @@ public class Gui extends Application {
             line.setStrokeWidth(3);
             line.setMouseTransparent(true);
             center.getChildren().add(line);
+            isChanged = true;
           }
         }
       } else {
@@ -340,23 +368,11 @@ public class Gui extends Application {
     alert.showAndWait();
   }
 
-  private boolean showNewConnectionDialog(String place1, String place2) {
-    Dialog<Boolean> dialog = new Dialog<>();
-    dialog.setTitle("Connection");
-    dialog.setHeaderText(String.format("Connection from %s to %s", place1, place2));
-
-    VBox vBox = new VBox();
-    dialog.getDialogPane().setContent(vBox);
-    TextField nameInput = new TextField();
-    nameInput.setPromptText("Name");
-    TextField timeInput = new TextField();
-    timeInput.setPromptText("Time");
-    vBox.getChildren().addAll(nameInput, timeInput);
-    dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
-    vBox.requestFocus();
-    dialog.setResultConverter(btn -> btn == ButtonType.OK ? true: null);
-
-    Optional<Boolean> result = dialog.showAndWait();
+  private boolean newConnection(String place1, String place2) {
+    connectionDialog.setHeaderText(String.format("New connection from %s to %s.", place1, place2));
+    timeInput.clear();
+    nameInput.clear();
+    Optional<Boolean> result = connectionDialog.showAndWait();
     if (result.isPresent() && result.get()) {
       String name = nameInput.getText();
       int time = -1;
