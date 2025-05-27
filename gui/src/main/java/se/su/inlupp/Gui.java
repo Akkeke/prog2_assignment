@@ -22,11 +22,9 @@ import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
-import javafx.stage.Window;
 import javafx.stage.WindowEvent;
 
 import javax.imageio.ImageIO;
-import javax.swing.*;
 import java.awt.image.BufferedImage;
 import java.io.*;
 import java.util.*;
@@ -499,7 +497,7 @@ public class Gui extends Application {
     Optional<Boolean> result = connectionDialog.showAndWait();
     if (result.isPresent() && result.get()) {
       String name = nameInput.getText();
-      int time = -1;
+      int time;
       try {
         time = Integer.parseInt(timeInput.getText());
       } catch (NumberFormatException e) {
@@ -536,7 +534,7 @@ public class Gui extends Application {
 
     Optional<Boolean> result = connectionDialog.showAndWait();
     if (result.isPresent() && result.get()) {
-      int time = -1;
+      int time;
       try {
         time = Integer.parseInt(timeInput.getText());
         if (time > -1) {
