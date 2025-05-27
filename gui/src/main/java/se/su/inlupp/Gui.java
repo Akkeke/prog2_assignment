@@ -1,6 +1,7 @@
 package se.su.inlupp;
 
 import javafx.application.Application;
+import javafx.embed.swing.SwingFXUtils;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.geometry.Insets;
@@ -10,6 +11,7 @@ import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.image.WritableImage;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
@@ -20,8 +22,12 @@ import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
+import javafx.stage.Window;
+import javafx.stage.WindowEvent;
 
+import javax.imageio.ImageIO;
 import javax.swing.*;
+import java.awt.image.BufferedImage;
 import java.io.*;
 import java.util.*;
 
@@ -91,7 +97,7 @@ public class Gui extends Application {
     openItem.setOnAction(new OpenHandler());
     saveItem.setOnAction(new SaveHandler());
     saveImageItem.setOnAction(new SaveImageHandler());
-    exitItem.setOnAction(new ExitHandler());
+    exitItem.setOnAction(new ExitItemHandler());
 
     newPlace = new Button("New Place");
     Button findPath = new Button("Find Path");
@@ -132,6 +138,7 @@ public class Gui extends Application {
 
     Scene scene = new Scene(root, 650, 820);
     stage.setScene(scene);
+    stage.setOnCloseRequest(new ExitHandler());
     stage.show();
   }
 
@@ -151,7 +158,7 @@ public class Gui extends Application {
           placeMap = new HashMap<>();
           circleToPlace = new HashMap<>();
           setButtonsDisable(false);
-          isChanged = false;
+          isChanged = true;
         } else {
           alertError("Unable to load image file!");
         }
@@ -175,6 +182,10 @@ public class Gui extends Application {
   class SaveHandler implements EventHandler<ActionEvent> {
     @Override
     public void handle(ActionEvent event) {
+      if (imageView.getImage() == null) {
+        alertError("File is empty!");
+        return;
+      }
       File file = fileChooser.showSaveDialog(stage);
       if (file != null) {
         if (!file.getName().endsWith(".graf")) {
@@ -188,14 +199,40 @@ public class Gui extends Application {
   class SaveImageHandler implements EventHandler<ActionEvent> {
     @Override
     public void handle(ActionEvent event) {
-
+      if (imageView.getImage() != null) {
+          try {
+            WritableImage image = center.snapshot(null, null);
+            BufferedImage bufferedImage = SwingFXUtils.fromFXImage(image, null);
+              ImageIO.write(bufferedImage, "png", new File("capture.png"));
+          } catch (IOException e) {
+              alertError("Unable to save image!");
+              System.err.println(e.getMessage());
+          }
+      } else {
+        alertError("No image to save!");
+      }
     }
   }
 
-  class ExitHandler implements EventHandler<ActionEvent> {
+  class ExitItemHandler implements EventHandler<ActionEvent> {
     @Override
     public void handle(ActionEvent event) {
+      stage.fireEvent(new WindowEvent(stage, WindowEvent.WINDOW_CLOSE_REQUEST));
+    }
+  }
 
+  class ExitHandler implements EventHandler<WindowEvent> {
+    @Override
+    public void handle(WindowEvent event) {
+      if (isChanged) {
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+        alert.setHeaderText("Unsaved changes! Exit anyway?");
+        alert.setTitle("Exit");
+        Optional<ButtonType> result = alert.showAndWait();
+        if (result.isPresent() && result.get().equals(ButtonType.CANCEL)) {
+          event.consume();
+        }
+      }
     }
   }
 
@@ -230,10 +267,16 @@ public class Gui extends Application {
       placeMap = new HashMap<>();
       circleToPlace = new HashMap<>();
       String imagePath = reader.readLine();
+      if (imagePath == null) {
+        alertError("Unable to load image");
+        return;
+      }
       Image image = new Image(imagePath);
       if (!image.isError()) {
         setImageView(image);
-        String[] info = reader.readLine().split(";");
+        String line = reader.readLine();
+        if (line.isBlank()) return;
+        String[] info = line.split(";");
         for (int i = 0; i < info.length; i += 3) {
           String place = info[i];
           double x = Double.parseDouble(info[i + 1]);
@@ -241,7 +284,7 @@ public class Gui extends Application {
           addAndDrawPlace(place, x, y);
         }
 
-        String line = reader.readLine();
+        line = reader.readLine();
         while (line != null) {
           info = line.split(";");
           int weight = Integer.parseInt(info[3]);
@@ -289,15 +332,17 @@ public class Gui extends Application {
       Optional<String> name = nameInput.showAndWait();
       center.getChildren().remove(dot);
 
-      if (name.isPresent() && !name.get().isBlank()) {
-        if (!placeMap.containsKey(name.get())) {
-          addAndDrawPlace(name.get(), event.getX(), event.getY());
-          isChanged = true;
+      if (name.isPresent()) {
+        if (!name.get().isBlank()) {
+          if (!placeMap.containsKey(name.get())) {
+            addAndDrawPlace(name.get(), event.getX(), event.getY());
+            isChanged = true;
+          } else {
+            alertError("\"" + name.get() + "\"" + " already exists!");
+          }
         } else {
-          alertError("\"" + name.get() + "\"" + " already exists!");
+          alertError("Name can't be empty!");
         }
-      } else {
-        alertError("Name can't be empty!");
       }
 
       center.setOnMouseClicked(null);
@@ -497,6 +542,7 @@ public class Gui extends Application {
         if (time > -1) {
           edge.setWeight(time);
           graph.getEdgeBetween(place2, place1).setWeight(time);
+          isChanged = true;
         }
         else alertError("Time must be positive integer");
       } catch (NumberFormatException e) {
