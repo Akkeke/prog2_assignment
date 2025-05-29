@@ -158,7 +158,7 @@ public class Gui extends Application {
           setButtonsDisable(false);
           isChanged = true;
         } else {
-          alertError("Unable to load image file!");
+          alertError(image.getException().getMessage());
         }
       }
     }
@@ -170,7 +170,6 @@ public class Gui extends Application {
       File file = fileChooser.showOpenDialog(stage);
       if (file != null && file.getName().endsWith(".graf")) {
         open(file);
-        setButtonsDisable(false);
         selectedPlace1 = null;
         selectedPlace2 = null;
       }
@@ -266,9 +265,10 @@ public class Gui extends Application {
       circleToPlace = new HashMap<>();
       String imagePath = reader.readLine();
       if (imagePath == null) {
-        alertError("Unable to load image");
+        alertError("No image to load!");
         return;
       }
+
       Image image = new Image(imagePath);
       if (!image.isError()) {
         setImageView(image);
@@ -290,6 +290,9 @@ public class Gui extends Application {
           line = reader.readLine();
         }
         isChanged = false;
+        setButtonsDisable(false);
+      } else {
+        alertError(image.getException().getMessage());
       }
     } catch (IOException e) {
       alertError("An error occurred while opening file");
