@@ -1,3 +1,9 @@
+// PROG2 VT2025, Inlämningsuppgift, del 1
+// Grupp 014
+// Axel Agvald axag4986
+// Namn
+// Namn
+
 package se.su.inlupp;
 
 public class Edge<T> {
@@ -32,6 +38,6 @@ public class Edge<T> {
 
   @Override
   public String toString() {
-    return String.format("to %s by %s takes %d", getDestination(), getName(), getWeight());
+    return String.format("till %s med %s tar %d", getDestination(), getName(), getWeight());
   }
 }

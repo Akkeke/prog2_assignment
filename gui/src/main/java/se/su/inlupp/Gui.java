@@ -1,3 +1,9 @@
+// PROG2 VT2025, Inlämningsuppgift, del 2
+// Grupp 014
+// Axel Agvald axag4986
+// Namn
+// Namn
+
 package se.su.inlupp;
 
 import javafx.application.Application;
@@ -36,7 +42,7 @@ public class Gui extends Application {
   private static final Color PLACE_COLOR_SELECTED = Color.rgb(36, 180, 224);
   private static final double PLACE_SIZE = 8;
   private static final int FONT_SIZE = 14;
-  private static final int LINE_STROKE_WIDTH = 3;
+  private static final int LINE_STROKE_WIDTH = 2;
 
   private Graph<String> graph = new ListGraph<>();
   private Map<String, Circle> placeMap = new HashMap<>();
@@ -145,6 +151,10 @@ public class Gui extends Application {
   class NewMapHandler implements EventHandler<ActionEvent> {
     @Override
     public void handle(ActionEvent event) {
+      if (isChanged) {
+        Optional<ButtonType> result = alertUnsavedChanges("Opening a new file will delete unsaved changes. Proceed anyway?");
+        if (result.isPresent() && result.get().equals(ButtonType.CANCEL)) return;
+      }
       File file = fileChooser.showOpenDialog(stage);
       if (file != null) {
         Image image = new Image(file.toURI().toString());
@@ -167,11 +177,19 @@ public class Gui extends Application {
   class OpenHandler implements EventHandler<ActionEvent> {
     @Override
     public void handle(ActionEvent event) {
+      if (isChanged) {
+        Optional<ButtonType> result = alertUnsavedChanges("Opening a new file will delete unsaved changes. Proceed anyway?");
+        if (result.isPresent() && result.get().equals(ButtonType.CANCEL)) return;
+      }
       File file = fileChooser.showOpenDialog(stage);
-      if (file != null && file.getName().endsWith(".graf")) {
-        open(file);
-        selectedPlace1 = null;
-        selectedPlace2 = null;
+      if (file != null) {
+        if (file.getName().endsWith(".graph")) {
+          open(file);
+          selectedPlace1 = null;
+          selectedPlace2 = null;
+        } else {
+          alertError("Unsupported file type!");
+        }
       }
     }
   }
@@ -185,8 +203,8 @@ public class Gui extends Application {
       }
       File file = fileChooser.showSaveDialog(stage);
       if (file != null) {
-        if (!file.getName().endsWith(".graf")) {
-          file = new File(file.getAbsolutePath() + ".graf");
+        if (!file.getName().endsWith(".graph")) {
+          file = new File(file.getAbsolutePath() + ".graph");
         }
         save(file);
       }
@@ -222,13 +240,8 @@ public class Gui extends Application {
     @Override
     public void handle(WindowEvent event) {
       if (isChanged) {
-        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-        alert.setHeaderText("Unsaved changes! Exit anyway?");
-        alert.setTitle("Exit");
-        Optional<ButtonType> result = alert.showAndWait();
-        if (result.isPresent() && result.get().equals(ButtonType.CANCEL)) {
-          event.consume();
-        }
+        Optional<ButtonType> result = alertUnsavedChanges("Unsaved changes. Exit anyway?");
+        if (result.isPresent() && result.get().equals(ButtonType.CANCEL)) event.consume();
       }
     }
   }
@@ -268,12 +281,14 @@ public class Gui extends Application {
         alertError("No image to load!");
         return;
       }
-
       Image image = new Image(imagePath);
       if (!image.isError()) {
         setImageView(image);
         String line = reader.readLine();
-        if (line.isBlank()) return;
+        if (line.isBlank()) {
+          System.out.println("Hallå");
+          return;
+        }
         String[] info = line.split(";");
         for (int i = 0; i < info.length; i += 3) {
           String place = info[i];
@@ -305,6 +320,13 @@ public class Gui extends Application {
     imageView.setImage(image);
     center.setMinSize(image.getWidth(), image.getHeight());
     center.setMaxSize(image.getWidth(), image.getHeight());
+  }
+
+  private Optional<ButtonType> alertUnsavedChanges(String text) {
+    Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+    alert.setHeaderText(null);
+    alert.setContentText(text);
+    return alert.showAndWait();
   }
 
   //Knapparnas funktionalitet
@@ -454,7 +476,7 @@ public class Gui extends Application {
             pathText.appendText(e.toString() + "\n");
             totalTime += e.getWeight();
           }
-          pathText.appendText(Integer.toString(totalTime));
+          pathText.appendText("Total time: " + totalTime);
         } else {
           pathText.setText(String.format("No path found from %s to %s", place1, place2));
         }
@@ -477,17 +499,6 @@ public class Gui extends Application {
     placeMap.put(name, place);
     circleToPlace.put(place, name);
     graph.add(name);
-  }
-
-  private void setButtonsDisable(boolean value) {
-    buttonPane.getChildren().forEach(btn -> btn.setDisable(value));
-  }
-
-  private void alertError(String text) {
-    Alert alert = new Alert(Alert.AlertType.ERROR, text);
-    System.err.println(text);
-    alert.setHeaderText("");
-    alert.showAndWait();
   }
 
   private boolean newConnection(String place1, String place2) {
@@ -564,6 +575,17 @@ public class Gui extends Application {
     line.setStrokeWidth(LINE_STROKE_WIDTH);
     line.setMouseTransparent(true);
     center.getChildren().add(line);
+  }
+
+  private void setButtonsDisable(boolean value) {
+    buttonPane.getChildren().forEach(btn -> btn.setDisable(value));
+  }
+
+  private void alertError(String text) {
+    Alert alert = new Alert(Alert.AlertType.ERROR, text);
+    System.err.println(text);
+    alert.setHeaderText("");
+    alert.showAndWait();
   }
 
   public static void main(String[] args) {

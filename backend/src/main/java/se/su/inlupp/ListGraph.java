@@ -1,3 +1,9 @@
+// PROG2 VT2025, Inlämningsuppgift, del 1
+// Grupp 014
+// Axel Agvald axag4986
+// Namn
+// Namn
+
 package se.su.inlupp;
 
 import java.util.*;
@@ -20,8 +26,8 @@ private final Map<T, Set<Edge<T>>> connectionMap = new HashMap<>();
       if (e.getDestination().equals(node2)) throw new IllegalStateException();
     }
 
-    connectionMap.get(node1).add(new Edge<T>(node2, weight, name));
-    connectionMap.get(node2).add(new Edge<T>(node1, weight, name));
+    connectionMap.get(node1).add(new Edge<>(node2, weight, name));
+    connectionMap.get(node2).add(new Edge<>(node1, weight, name));
   }
 
   @Override
@@ -175,7 +181,7 @@ private final Map<T, Set<Edge<T>>> connectionMap = new HashMap<>();
     while (!queue.isEmpty()) {
       T node = queue.poll();
       if (node.equals(to)) break;
-      for (Edge<T> edge : connectionMap.getOrDefault(node, Collections.<Edge<T>>emptySet())) {
+      for (Edge<T> edge : connectionMap.getOrDefault(node, Collections.emptySet())) {
         T neighbor = edge.getDestination();
         int alt = dist.get(node) + edge.getWeight();
 

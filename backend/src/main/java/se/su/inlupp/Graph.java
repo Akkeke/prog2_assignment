@@ -1,3 +1,9 @@
+// PROG2 VT2025, Inlämningsuppgift, del 1
+// Grupp 014
+// Axel Agvald axag4986
+// Namn
+// Namn
+
 package se.su.inlupp;
 
 import java.util.Collection;
